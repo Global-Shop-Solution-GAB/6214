@@ -1,0 +1,1097 @@
+﻿Program.Sub.ScreenSU.Start
+Gui.frmFileSelection..Create(BaseForm)
+Gui.frmFileSelection..Caption("Labor Manual Time Card From Excel")
+Gui.frmFileSelection..Size(5985,2190)
+Gui.frmFileSelection..MinX(0)
+Gui.frmFileSelection..MinY(0)
+Gui.frmFileSelection..Position(0,0)
+Gui.frmFileSelection..AlwaysOnTop(False)
+Gui.frmFileSelection..FontName("Tahoma")
+Gui.frmFileSelection..FontSize(8.25)
+Gui.frmFileSelection..ControlBox(True)
+Gui.frmFileSelection..MaxButton(False)
+Gui.frmFileSelection..MinButton(True)
+Gui.frmFileSelection..MousePointer(0)
+Gui.frmFileSelection..Moveable(True)
+Gui.frmFileSelection..Sizeable(False)
+Gui.frmFileSelection..ShowInTaskBar(True)
+Gui.frmFileSelection..TitleBar(True)
+Gui.frmFileSelection..Event(UnLoad,frmFileSelection_UnLoad)
+Gui.frmFileSelection.lbl1.Create(Label,"Choose the Excel File",True,1530,195,0,195,105,True,0,"Tahoma",8.25,,0,0)
+Gui.frmFileSelection.lbl1.BorderStyle(0)
+Gui.frmFileSelection.txtFilename.Create(TextBox,"",True,5070,300,0,195,375,True,0,"Tahoma",8.25,,1)
+Gui.frmFileSelection.txtFilename.Locked(True)
+Gui.frmFileSelection.cmdSelectFile.Create(Button)
+Gui.frmFileSelection.cmdSelectFile.Enabled(True)
+Gui.frmFileSelection.cmdSelectFile.Visible(True)
+Gui.frmFileSelection.cmdSelectFile.Zorder(0)
+Gui.frmFileSelection.cmdSelectFile.Size(405,330)
+Gui.frmFileSelection.cmdSelectFile.Position(5370,345)
+Gui.frmFileSelection.cmdSelectFile.Caption("^")
+Gui.frmFileSelection.cmdSelectFile.FontName("Tahoma")
+Gui.frmFileSelection.cmdSelectFile.FontSize(8.25)
+Gui.frmFileSelection.cmdSelectFile.Event(Click,cmdSelectFile_Click)
+Gui.frmFileSelection.cmdOK.Create(Button)
+Gui.frmFileSelection.cmdOK.Enabled(True)
+Gui.frmFileSelection.cmdOK.Visible(True)
+Gui.frmFileSelection.cmdOK.Zorder(0)
+Gui.frmFileSelection.cmdOK.Size(795,345)
+Gui.frmFileSelection.cmdOK.Position(195,735)
+Gui.frmFileSelection.cmdOK.Caption("OK")
+Gui.frmFileSelection.cmdOK.FontName("Tahoma")
+Gui.frmFileSelection.cmdOK.FontSize(8.25)
+Gui.frmFileSelection.cmdOK.Event(Click,cmdOK_Click)
+Gui.frmFileSelection.pbProcess.Create(ProgressBar)
+Gui.frmFileSelection.pbProcess.Visible(False)
+Gui.frmFileSelection.pbProcess.Size(4350,270)
+Gui.frmFileSelection.pbProcess.Position(1365,780)
+Gui.frmFileSelection.lblProcess.Create(Label,"Step 1: Processing Record 0 of 0",False,4320,195,0,1380,1140,True,0,"Tahoma",7,,0,1)
+Gui.frmFileSelection.lblProcess.BorderStyle(0)
+Gui.frmFileSelection.lblUpload.Create(Label,"Step 2: Uploading 0 Recods. Please wait........",False,4275,165,0,1395,1425,True,0,"Tahoma",7,,0,1)
+Gui.frmFileSelection.lblUpload.BorderStyle(0)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+	
+	V.Local.sError.Declare
+	
+	'Show the selection screen
+	Gui.frmFileSelection..Show
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+Program.Sub.Main.End
+
+Program.Sub.LoadTextFiles.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+	V.Local.sFile.Declare
+	V.Local.sExcel.Declare
+	V.Local.sExcelFile.Declare
+	V.Local.iCnt.Declare
+	V.Local.sMessage.Declare
+	V.Local.bIsLocked.Declare
+	
+	F.Intrinsic.File.IsFileLocked(V.Screen.frmFileSelection!txtFilename.Text,V.Local.bIsLocked)
+	F.Intrinsic.Control.If(V.Local.bIsLocked)
+		F.Intrinsic.UI.Msgbox("File is locked by another process. Cannot continue the process.")
+		F.Intrinsic.Control.ExitSub
+	F.Intrinsic.Control.EndIf
+	
+'	F.Intrinsic.UI.InvokeWaitDialog("Uploading Labor Charge...","Please Wait...")
+	
+	F.ODBC.Connection!con.OpenCompanyConnection(300)
+	
+	V.Local.sExcelFile.Set(V.Screen.frmFileSelection!txtFilename.Text)
+	F.Data.DataTable.CreateFromCSV("dtImport",V.Local.sExcelFile,"Job*!*Suffix*!*Seq*!*DateSeq*!*WC*!*Employee*!*StartTime*!*EndTime*!*Hrs_Worked*!*Flag_Closed*!*Flag_Indirect*!*Rate_Type*!*Good_Pieces*!*Bad_Pieces*!*Scrap_Code","String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String",true)
+	F.Data.DataTable.DeleteRow("dtImport",0)
+	
+	F.Intrinsic.Control.CallSub(CreateUploadFile)
+	
+	F.Data.DataTable.Close("dtImport")
+	F.ODBC.Connection!con.Close
+	
+'	F.Intrinsic.UI.CloseWaitDialog
+	
+'	F.Intrinsic.String.Build("Upload Completed.{0}{1} was processed successfully.",V.Ambient.NewLine,V.Local.sExcelFile,V.Local.sMessage)
+'	F.Intrinsic.UI.Msgbox(V.Local.sMessage,"GAB_6214_LABOR_CHARGE_FROM_EXCEL")
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+Program.Sub.LoadTextFiles.End
+
+Program.Sub.LoadExcelFiles.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+	
+	V.Local.sError.Declare
+	V.Local.sFile.Declare
+	V.Local.sExcel.Declare
+	V.Local.sExcelFile.Declare
+	V.Local.sMessage.Declare
+	V.Local.bIsLocked.Declare
+	
+	F.Intrinsic.File.IsFileLocked(V.Screen.frmFileSelection!txtFilename.Text,V.Local.bIsLocked)
+	F.Intrinsic.Control.If(V.Local.bIsLocked)
+		F.Intrinsic.UI.Msgbox("File is locked by another process. Cannot continue the process.")
+		F.Intrinsic.Control.ExitSub
+	F.Intrinsic.Control.EndIf
+	
+'	F.Intrinsic.UI.InvokeWaitDialog("Uploading Labor Charge...","Please Wait...")
+	
+	F.ODBC.Connection!con.OpenCompanyConnection(300)
+	
+	V.Local.sExcelFile.Set(V.Screen.frmFileSelection!txtFilename.Text)
+	F.Automation.MSExcel.ReadSpreadsheet(V.Local.sExcelFile,v.Local.sExcel)
+	F.Intrinsic.String.Replace(v.Local.sExcel,"&^&","$!$",v.Local.sExcel)
+
+	F.Data.DataTable.CreateFromString("dtImport",V.Local.sExcel,"Job*!*Suffix*!*Seq*!*DateSeq*!*WC*!*Employee*!*StartTime*!*EndTime*!*Hrs_Worked*!*Flag_Closed*!*Flag_Indirect*!*Rate_Type*!*Good_Pieces*!*Bad_Pieces*!*Scrap_Code","String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String","*!*","$!$",true)
+	F.Data.DataTable.DeleteRow("dtImport",0)
+	
+	F.Intrinsic.Control.CallSub(CreateUploadFile)
+
+	F.Data.DataTable.Close("dtImport")
+	F.ODBC.Connection!con.Close
+		
+'	F.Intrinsic.UI.CloseWaitDialog
+	
+'	F.Intrinsic.String.Build("Upload Completed.{0}{1} was processed successfully.",V.Ambient.NewLine,V.Local.sExcelFile,V.Local.sMessage)
+'	F.Intrinsic.UI.Msgbox(V.Local.sMessage,"GAB_6214_LABOR_CHARGE_FROM_EXCEL")
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+Program.Sub.LoadExcelFiles.End
+
+Program.Sub.LoadOpenOfficeFiles.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+	
+	V.Local.sError.Declare
+	V.Local.sFile.Declare
+	V.Local.sExcel.Declare
+	V.Local.sExcelFile.Declare
+	V.Local.sMessage.Declare
+	
+'	F.Intrinsic.UI.InvokeWaitDialog("Uploading Labor Charge...","Please Wait...")
+	
+	F.ODBC.Connection!con.OpenCompanyConnection(300)
+	
+	V.Local.sExcelFile.Set(V.Screen.frmFileSelection!txtFilename.Text)
+	F.Automation.OOCalc.ReadSpreadsheet(V.Local.sExcelFile,False,v.Local.sExcel)
+	F.Intrinsic.String.Replace(v.Local.sExcel,"&^&","$!$",v.Local.sExcel)
+
+	F.Data.DataTable.CreateFromString("dtImport",V.Local.sExcel,"Job*!*Suffix*!*Seq*!*DateSeq*!*WC*!*Employee*!*StartTime*!*EndTime*!*Hrs_Worked*!*Flag_Closed*!*Flag_Indirect*!*Rate_Type*!*Good_Pieces*!*Bad_Pieces*!*Scrap_Code","String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String","*!*","$!$",true)
+	F.Data.DataTable.DeleteRow("dtImport",0)
+	
+	F.Intrinsic.Control.CallSub(CreateUploadFile)
+
+	F.Data.DataTable.Close("dtImport")
+	F.ODBC.Connection!con.Close
+		
+'	F.Intrinsic.UI.CloseWaitDialog
+	
+'	F.Intrinsic.String.Build("Upload Completed.{0}{1} was processed successfully.",V.Ambient.NewLine,V.Local.sExcelFile,V.Local.sMessage)
+'	F.Intrinsic.UI.Msgbox(V.Local.sMessage,"GAB_6214_LABOR_CHARGE_FROM_EXCEL")
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+Program.Sub.LoadOpenOfficeFiles.End
+
+Program.Sub.CreateUploadFile.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+	
+	V.Local.sError.Declare
+	
+	V.Local.sFile.Declare
+	V.Local.iCnt.Declare
+	
+	V.Local.sJob.Declare
+	V.Local.sSuffix.Declare
+	V.Local.sSeq.Declare
+	V.Local.sDateSeq.Declare
+	V.Local.sDept.Declare
+	V.Local.sWC.Declare
+	V.Local.sWcRate.Declare
+	V.Local.sEmployee.Declare
+	V.Local.sStartTime.Declare
+	V.Local.sEndTime.Declare
+	V.Local.sHrsWorked.Declare
+	V.Local.sFlagClsd.Declare
+	V.Local.sFlagIndirect.Declare
+	V.Local.sRateType.Declare
+	V.Local.sGoodPieces.Declare
+	V.Local.sScrapPieces.Declare
+	V.Local.sScrapCode.Declare
+	
+	V.Local.dDate.Declare
+	V.Local.sString.Declare
+	V.Local.iExcelLine.Declare
+	V.Local.sMessage.Declare	
+	
+	V.Local.fToleranceHrs.Declare
+	V.Local.sProcessMsg.Declare
+	V.Local.iRecNo.Declare
+	
+	V.Local.sSQL.Declare
+	V.Local.sRet.Declare
+	
+	'Set the Progess Bars
+	Gui.frmFileSelection.pbProcess.Max(V.DataTable.dtImport.RowCount)
+	Gui.frmFileSelection.pbProcess.Value(0)
+	Gui.frmFileSelection.pbProcess.Visible(True)
+	Gui.frmFileSelection.lblProcess.Visible(True)
+	F.Intrinsic.String.Build("Step 1: Processing Record {0} of {1}",0,V.DataTable.dtImport.RowCount,V.Local.sProcessMsg)
+	Gui.frmFileSelection.lblProcess.Caption(V.Local.sProcessMsg)
+	
+	F.Intrinsic.String.Build("Step 2: Uploading {0} Recods. Please wait........",V.DataTable.dtImport.RowCount,V.Local.sProcessMsg)
+	Gui.frmFileSelection.lblUpload.Caption(V.Local.sProcessMsg)
+	Gui.frmFileSelection.lblUpload.Visible(False)
+	
+	V.Local.sString.Set("")
+	F.Intrinsic.Control.For(v.Local.iCnt,0,V.DataTable.dtImport.RowCount--,1)
+		'Update the Record Processing Progress Bar & Status
+		F.Intrinsic.Math.Add(v.Local.iCnt,1,V.Local.iRecNo)
+		Gui.frmFileSelection.pbProcess.Value(V.Local.iRecNo)
+		F.Intrinsic.String.Build("Step 1: Processing Record {0} of {1}",V.Screen.frmFileSelection!pbProcess.Value,V.DataTable.dtImport.RowCount,V.Local.sProcessMsg)
+		Gui.frmFileSelection.lblProcess.Caption(V.Local.sProcessMsg)
+		
+		'Validate Job, Suffix, Seq
+		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).Suffix!FieldValTrim,=,"NULL")
+			F.Data.DataTable.SetValue("dtImport",V.Local.iCnt,"Suffix","")
+		F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.CallSub(ValidateJob,"sJob",V.DataTable.dtImport(V.Local.iCnt).Job!FieldValTrim,"sSuffix",V.DataTable.dtImport(V.Local.iCnt).Suffix!FieldValTrim,"sSeq",V.DataTable.dtImport(V.Local.iCnt).Seq!FieldValTrim)
+		F.Intrinsic.Control.If(V.Args.bValidJob)
+		F.Intrinsic.Control.AndIf(V.Args.bLaborSeq)
+		F.Intrinsic.Control.AndIf(V.Args.bJobClosed)
+			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+			F.Intrinsic.String.Build("Job: {0} Suffix: {1} is already closed on line: {2}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).Job!FieldValTrim,V.DataTable.dtImport(V.Local.iCnt).Suffix!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+		F.Intrinsic.Control.ElseIf(V.Args.bValidJob)
+		F.Intrinsic.Control.AndIf(V.Args.bLaborSeq)
+		F.Intrinsic.Control.AndIf(V.Args.bJobSeqClosed)
+			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+			F.Intrinsic.String.Build("Job: {0} Suffix: {1} Seq: {2} is already closed on line: {3}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).Job!FieldValTrim,V.DataTable.dtImport(V.Local.iCnt).Suffix!FieldValTrim,V.DataTable.dtImport(V.Local.iCnt).Seq!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+		F.Intrinsic.Control.ElseIf(V.Args.bValidJob.Not)
+			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+			F.Intrinsic.String.Build("Job: {0} Suffix: {1} is invalid on line: {2}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).Job!FieldValTrim,V.DataTable.dtImport(V.Local.iCnt).Suffix!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+		F.Intrinsic.Control.ElseIf(V.Args.bLaborSeq.Not)
+			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+			F.Intrinsic.String.Build("Job: {0} Suffix: {1} Seq: {2} is not a Labor sequence on line: {3}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).Job!FieldValTrim,V.DataTable.dtImport(V.Local.iCnt).Suffix!FieldValTrim,V.DataTable.dtImport(V.Local.iCnt).Seq!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+		F.Intrinsic.Control.Else
+			'Job
+			V.Local.sJob.Set(V.DataTable.dtImport(V.Local.iCnt).Job!FieldValTrim)
+			'Job Suffix
+			V.Local.sSuffix.Set(V.DataTable.dtImport(V.Local.iCnt).Suffix!FieldValTrim)
+			'Job Seq
+			V.Local.sSeq.Set(V.DataTable.dtImport(V.Local.iCnt).Seq!FieldValTrim)
+		F.Intrinsic.Control.EndIf
+		
+		'Date Sequence
+		F.Intrinsic.Control.CallSub(ValidateDate,"sDateInput",V.DataTable.dtImport(V.Local.iCnt).DateSeq!FieldValTrim,"sDateInputFormat","YYYYMMDD","sDateOutputFormat","MMDDYY")
+		F.Intrinsic.Control.If(V.Args.bValidDate)
+			V.Local.sDateSeq.Set(V.Args.sRetDate)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+			F.Intrinsic.String.Build("Invalid Date: {0} in DateSeq column on line: {1}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).DateSeq!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+		F.Intrinsic.Control.EndIf	
+		
+		'Removed - TDjohan - 11/09/2022
+'		'Workcenter		
+'		F.Intrinsic.Control.CallSub(ValidateWorkcenter,"sWorkcenter",V.DataTable.dtImport(V.Local.iCnt).WC!FieldValTrim)
+'		F.Intrinsic.Control.If(V.Args.bValidWorkGroup)
+'			V.Local.sWC.Set(V.DataTable.dtImport(V.Local.iCnt).WC!FieldValTrim)
+'		F.Intrinsic.Control.ElseIf(V.Args.bValidWorkCenter)
+'			V.Local.sWC.Set(V.DataTable.dtImport(V.Local.iCnt).WC!FieldValTrim)
+'		F.Intrinsic.Control.Else
+'			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+'			F.Intrinsic.String.Build("Invalid Workcenter: {0} on line: {1}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).WC!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+'			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+'		F.Intrinsic.Control.EndIf
+		
+		'Added - TDjohan - 11/09/2022
+		'Workcenter
+		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).WC!FieldValTrim,=,"")
+'			F.Intrinsic.String.Build("select PART as Workcenter from JOB_OPERATIONS where JOB = '{0}' AND SUFFIX = '{1}' AND SEQ = '{2}';",V.DataTable.dtImport(V.Local.iCnt).Job!FieldValTrim,V.DataTable.dtImport(V.Local.iCnt).Suffix!FieldValTrim,V.DataTable.dtImport(V.Local.iCnt).Seq!FieldValTrim,V.Local.sSQL)
+			F.Intrinsic.String.Build("select PART as Workcenter from JOB_OPERATIONS where JOB = '{0}' AND SUFFIX = '{1}' AND SEQ = '{2}' AND LMO = 'L';",V.DataTable.dtImport(V.Local.iCnt).Job!FieldValTrim,V.DataTable.dtImport(V.Local.iCnt).Suffix!FieldValTrim,V.DataTable.dtImport(V.Local.iCnt).Seq!FieldValTrim,V.Local.sSQL)
+			F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL,V.Local.sRet)
+			F.Intrinsic.Control.If(v.Local.sRet.Trim,=,"")
+				F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+				F.Intrinsic.String.Build("This is Job: {0}-{1} Seq: {2} is not a Labor sequence on line: {3}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).Job!FieldValTrim,V.DataTable.dtImport(V.Local.iCnt).Suffix!FieldValTrim,V.DataTable.dtImport(V.Local.iCnt).Seq!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+				F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+			F.Intrinsic.Control.Else
+				V.Local.sWC.Set(V.Local.sRet)
+			F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.Else
+			F.Intrinsic.Control.CallSub(ValidateWorkcenter,"sWorkcenter",V.DataTable.dtImport(V.Local.iCnt).WC!FieldValTrim)
+			F.Intrinsic.Control.If(V.Args.bValidWorkGroup)
+				V.Local.sWC.Set(V.DataTable.dtImport(V.Local.iCnt).WC!FieldValTrim)
+			F.Intrinsic.Control.ElseIf(V.Args.bValidWorkCenter)
+				V.Local.sWC.Set(V.DataTable.dtImport(V.Local.iCnt).WC!FieldValTrim)
+			F.Intrinsic.Control.Else
+				F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+				F.Intrinsic.String.Build("Invalid Workcenter: {0} on line: {1}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).WC!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+				F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+			F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.EndIf
+		
+		'Employee
+		F.Intrinsic.String.LPad(V.DataTable.dtImport(V.Local.iCnt).Employee!FieldValTrim,"0",5,V.Local.sEmployee)
+		F.Intrinsic.Control.CallSub(ValidateEmployee,"sEmployee",V.Local.sEmployee)
+		F.Intrinsic.Control.If(V.Args.bValid.Not)
+			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+			F.Intrinsic.String.Build("Invalid Employee: {0} on line: {1}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).Employee!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+		F.Intrinsic.Control.EndIf
+		
+'		'StartTime
+'		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).StartTime!FieldValTrim,=,"NULL")
+'			F.Data.DataTable.SetValue("dtImport",V.Local.iCnt,"StartTime","")
+'		F.Intrinsic.Control.EndIf
+'		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).StartTime!FieldValTrim,<>,"")
+'			F.Intrinsic.Control.CallSub(ValidateTime,"sTime",V.DataTable.dtImport(V.Local.iCnt).StartTime!FieldValTrim)
+'			F.Intrinsic.Control.If(V.Args.bValid)
+'				V.Local.sStartTime.Set(V.DataTable.dtImport(V.Local.iCnt).StartTime!FieldValTrim)
+'			F.Intrinsic.Control.Else
+'				F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+'				F.Intrinsic.String.Build("Invalid Start Time: {0} on line: {1}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).StartTime!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+'				F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+'			F.Intrinsic.Control.EndIf
+'		F.Intrinsic.Control.Else
+'			V.Local.sStartTime.Set("")
+'		F.Intrinsic.Control.EndIf
+'		
+'		'EndTime
+'		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).EndTime!FieldValTrim,=,"NULL")
+'			F.Data.DataTable.SetValue("dtImport",V.Local.iCnt,"EndTime","")
+'		F.Intrinsic.Control.EndIf
+'		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).EndTime!FieldValTrim,<>,"")
+'			F.Intrinsic.Control.CallSub(ValidateTime,"sTime",V.DataTable.dtImport(V.Local.iCnt).EndTime!FieldValTrim)
+'			F.Intrinsic.Control.If(V.Args.bValid)
+'				V.Local.sEndTime.Set(V.DataTable.dtImport(V.Local.iCnt).EndTime!FieldValTrim)
+'			F.Intrinsic.Control.Else
+'				F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+'				F.Intrinsic.String.Build("Invalid Start Time: {0} on line: {1}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).EndTime!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+'				F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+'			F.Intrinsic.Control.EndIf
+'		F.Intrinsic.Control.Else
+'			V.Local.sEndTime.Set("")
+'		F.Intrinsic.Control.EndIf
+
+		'Validate StartTime & EndTime 
+		
+		'StartTime
+		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).StartTime!FieldValTrim,=,"NULL",OR,V.DataTable.dtImport(V.Local.iCnt).StartTime!FieldValTrim,=,"")
+			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+			F.Intrinsic.String.Build("Start Time is missing on line: {0}. Process terminated.",V.Local.iExcelLine.String,V.Local.sMessage)
+			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+		F.Intrinsic.Control.ElseIf(V.DataTable.dtImport(V.Local.iCnt).StartTime!FieldValTrim,=,"0000",AND,V.DataTable.dtImport(V.Local.iCnt).EndTime!FieldValTrim,=,"0000",V.DataTable.dtImport(V.Local.iCnt).Hrs_Worked!FieldValFloat,=,0)
+			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+			F.Intrinsic.String.Build("Need Start Time and End Time if no Hrs Worked is provided on line: {0}. Process terminated.",V.Local.iExcelLine.String,V.Local.sMessage)
+			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.Control.CallSub(ValidateTime,"sTime",V.DataTable.dtImport(V.Local.iCnt).StartTime!FieldValTrim)
+			F.Intrinsic.Control.If(V.Args.bValid)
+				V.Local.sStartTime.Set(V.DataTable.dtImport(V.Local.iCnt).StartTime!FieldValTrim)
+			F.Intrinsic.Control.Else
+				F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+				F.Intrinsic.String.Build("Invalid Start Time: {0} on line: {1}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).StartTime!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+				F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+			F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.EndIf
+		
+		'EndTime
+		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).EndTime!FieldValTrim,=,"NULL",OR,V.DataTable.dtImport(V.Local.iCnt).EndTime!FieldValTrim,=,"")
+			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+			F.Intrinsic.String.Build("End Time is missing on line: {0}. Process terminated.",V.Local.iExcelLine.String,V.Local.sMessage)
+			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+		F.Intrinsic.Control.ElseIf(V.DataTable.dtImport(V.Local.iCnt).StartTime!FieldValTrim,=,"0000",AND,V.DataTable.dtImport(V.Local.iCnt).EndTime!FieldValTrim,=,"0000",V.DataTable.dtImport(V.Local.iCnt).Hrs_Worked!FieldValFloat,=,0)
+			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+			F.Intrinsic.String.Build("Need Start Time and End Time if no Hrs Worked is provided on line: {0}. Process terminated.",V.Local.iExcelLine.String,V.Local.sMessage)
+			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.Control.CallSub(ValidateTime,"sTime",V.DataTable.dtImport(V.Local.iCnt).EndTime!FieldValTrim)
+			F.Intrinsic.Control.If(V.Args.bValid)
+				V.Local.sEndTime.Set(V.DataTable.dtImport(V.Local.iCnt).EndTime!FieldValTrim)
+			F.Intrinsic.Control.Else
+				F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+				F.Intrinsic.String.Build("Invalid End Time: {0} on line: {1}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).EndTime!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+				F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+			F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.EndIf
+		
+'		'Hrs_Worked
+'		F.Intrinsic.Control.If(V.Local.sStartTime.Trim,<>,"","AND",V.Local.sEndTime.Trim,<>,"")
+'			F.Intrinsic.Control.CallSub(CalcHoursWorked,"sStartTime",V.Local.sStartTime,"sEndTime",V.Local.sEndTime)
+'			F.Intrinsic.Control.If(V.Args.fHoursWorked,=,V.DataTable.dtImport(V.Local.iCnt).Hrs_Worked!FieldValFloat)
+'				V.Local.sHrsWorked.Set(V.DataTable.dtImport(V.Local.iCnt).Hrs_Worked!FieldValFloat)
+'			F.Intrinsic.Control.Else
+'				F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+'				F.Intrinsic.String.Build("Duration of StartTime & EndTime is different from Hours_Worked column on line: {0}. Process terminated.",V.Local.iExcelLine.String,V.Local.sMessage)
+'				F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+'			F.Intrinsic.Control.EndIf
+'		F.Intrinsic.Control.Else
+'			V.Local.sHrsWorked.Set(V.DataTable.dtImport(V.Local.iCnt).Hrs_Worked!FieldValFloat)
+'			F.Intrinsic.String.Format(V.Local.sHrsWorked,"0.0000",V.Local.sHrsWorked)
+'		F.Intrinsic.Control.EndIf
+'		F.Intrinsic.String.Format(V.Local.sHrsWorked,"0.0000",V.Local.sHrsWorked)
+		
+'		'Hrs_Worked ---- Add tolerance of +/- 6 minutes (0.1 hours). If the HrsWorked provided different from the calculated hours worked then use the calculated hours worked.
+'		F.Intrinsic.Control.If(V.Local.sStartTime.Trim,<>,"","AND",V.Local.sEndTime.Trim,<>,"")
+'			F.Intrinsic.Control.CallSub(CalcHoursWorked,"sStartTime",V.Local.sStartTime,"sEndTime",V.Local.sEndTime)
+'			F.Intrinsic.Control.If(V.Args.fHoursWorked,=,V.DataTable.dtImport(V.Local.iCnt).Hrs_Worked!FieldValFloat)
+'				V.Local.sHrsWorked.Set(V.DataTable.dtImport(V.Local.iCnt).Hrs_Worked!FieldValFloat)
+'			F.Intrinsic.Control.Else
+'				F.Intrinsic.Math.Sub(V.DataTable.dtImport(V.Local.iCnt).Hrs_Worked!FieldValFloat,V.Args.fHoursWorked,V.Local.fToleranceHrs)
+'				F.Intrinsic.Math.Round(V.Local.fToleranceHrs,2,V.Local.fToleranceHrs)
+'				F.Intrinsic.Control.If(V.Local.fToleranceHrs,>=,-0.10,AND,V.Local.fToleranceHrs,<=,0.10)
+'					V.Local.sHrsWorked.Set(V.Args.fHoursWorked)
+'				F.Intrinsic.Control.Else
+'					F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+'					F.Intrinsic.String.Build("Duration of StartTime & EndTime is different from Hours_Worked column on line: {0}. Process terminated.",V.Local.iExcelLine.String,V.Local.sMessage)
+'					F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+'				F.Intrinsic.Control.EndIf
+'			F.Intrinsic.Control.EndIf
+'		F.Intrinsic.Control.Else
+'			V.Local.sHrsWorked.Set(V.DataTable.dtImport(V.Local.iCnt).Hrs_Worked!FieldValFloat)
+'			F.Intrinsic.String.Format(V.Local.sHrsWorked,"0.0000",V.Local.sHrsWorked)
+'		F.Intrinsic.Control.EndIf
+'		F.Intrinsic.String.Format(V.Local.sHrsWorked,"0.0000",V.Local.sHrsWorked)
+		
+'		'Removed - TDjohan - 11/09/2022
+'		'Hrs_Worked ----- Set to "" because it is not needed since it will be calculated by the upload program based on StartTime and EndTime
+'		V.Local.sHrsWorked.Set("")
+		
+		'Added - TDjohan - 11/09/2022
+		'Hrs_Worked
+		F.Intrinsic.Control.If(V.Local.sStartTime.Trim,<>,"","AND",V.Local.sEndTime.Trim,<>,"")
+		F.Intrinsic.Control.AndIf(V.Local.sStartTime.Trim,<>,"0000","AND",V.Local.sEndTime.Trim,<>,"0000")
+			F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).Hrs_Worked!FieldValFloat,=,0)
+				V.Local.sHrsWorked.Set(V.DataTable.dtImport(V.Local.iCnt).Hrs_Worked!FieldValFloat)
+			F.Intrinsic.Control.Else
+				F.Intrinsic.Control.CallSub(CalcHoursWorked,"sStartTime",V.Local.sStartTime,"sEndTime",V.Local.sEndTime)
+				F.Intrinsic.Control.If(V.Args.fHoursWorked,=,V.DataTable.dtImport(V.Local.iCnt).Hrs_Worked!FieldValFloat)
+					V.Local.sHrsWorked.Set(V.DataTable.dtImport(V.Local.iCnt).Hrs_Worked!FieldValFloat)
+				F.Intrinsic.Control.Else
+					F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+					F.Intrinsic.String.Build("Duration of StartTime & EndTime is different from Hours_Worked column on line: {0}. Process terminated.",V.Local.iExcelLine.String,V.Local.sMessage)
+					F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+				F.Intrinsic.Control.EndIf
+			F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.Else
+			V.Local.sHrsWorked.Set(V.DataTable.dtImport(V.Local.iCnt).Hrs_Worked!FieldValFloat)
+		F.Intrinsic.Control.EndIf
+		F.Intrinsic.String.Format(V.Local.sHrsWorked,"0.0000",V.Local.sHrsWorked)
+
+		'Flag Closed
+		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).Flag_Closed!FieldValTrim,<>,"")
+		F.Intrinsic.Control.AndIf(V.DataTable.dtImport(V.Local.iCnt).Flag_Closed!FieldValTrim,<>,"Y")
+		F.Intrinsic.Control.AndIf(V.DataTable.dtImport(V.Local.iCnt).Flag_Closed!FieldValTrim,<>,"N")
+			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+			F.Intrinsic.String.Build("Flag_Closed: {0} is invalid on line: {1}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).Flag_Closed!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+		F.Intrinsic.Control.Else
+			V.Local.sFlagClsd.Set(V.DataTable.dtImport(V.Local.iCnt).Flag_Closed!FieldValTrim)
+		F.Intrinsic.Control.EndIf
+		
+'		'Removed - TDjohan - 11/09/2022
+'		'Flag Indirect
+'		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).Flag_Indirect!FieldValTrim,<>,"D")
+'		F.Intrinsic.Control.AndIf(V.DataTable.dtImport(V.Local.iCnt).Flag_Indirect!FieldValTrim,<>,"S")
+'		F.Intrinsic.Control.AndIf(V.DataTable.dtImport(V.Local.iCnt).Flag_Indirect!FieldValTrim,<>,"I")
+'			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+'			F.Intrinsic.String.Build("Flag_Indirect: {0} is invalid on line: {1}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).Flag_Indirect!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+'			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+'		F.Intrinsic.Control.Else
+'			V.Local.sFlagIndirect.Set(V.DataTable.dtImport(V.Local.iCnt).Flag_Indirect!FieldValTrim)
+'		F.Intrinsic.Control.EndIf
+		
+		'Added - TDjohan - 11/09/2022
+		'Flag Indirect
+		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).Flag_Indirect!FieldValTrim,=,"")
+			V.Local.sFlagIndirect.Set("D")
+		F.Intrinsic.Control.ElseIf(V.DataTable.dtImport(V.Local.iCnt).Flag_Indirect!FieldValTrim,<>,"D")
+		F.Intrinsic.Control.AndIf(V.DataTable.dtImport(V.Local.iCnt).Flag_Indirect!FieldValTrim,<>,"S")
+		F.Intrinsic.Control.AndIf(V.DataTable.dtImport(V.Local.iCnt).Flag_Indirect!FieldValTrim,<>,"I")
+			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+			F.Intrinsic.String.Build("Flag_Indirect: {0} is invalid on line: {1}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).Flag_Indirect!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+		F.Intrinsic.Control.Else
+			V.Local.sFlagIndirect.Set(V.DataTable.dtImport(V.Local.iCnt).Flag_Indirect!FieldValTrim)
+		F.Intrinsic.Control.EndIf
+		
+		'Removed - TDjohan - 11/09/2022
+'		'Rate Type
+'		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).Rate_Type!FieldValTrim,<>,"R")
+'		F.Intrinsic.Control.AndIf(V.DataTable.dtImport(V.Local.iCnt).Rate_Type!FieldValTrim,<>,"O")
+'		F.Intrinsic.Control.AndIf(V.DataTable.dtImport(V.Local.iCnt).Rate_Type!FieldValTrim,<>,"2")
+'			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+'			F.Intrinsic.String.Build("Rate_Type: {0} is invalid on line: {1}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).Rate_Type!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+'			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+'		F.Intrinsic.Control.Else
+'			V.Local.sRateType.Set(V.DataTable.dtImport(V.Local.iCnt).Rate_Type!FieldValTrim)
+'		F.Intrinsic.Control.EndIf
+		
+		'Added - TDjohan - 11/09/2022
+		'Rate Type
+		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).Rate_Type!FieldValTrim,=,"")
+			V.Local.sRateType.Set("R")
+		F.Intrinsic.Control.ElseIf(V.DataTable.dtImport(V.Local.iCnt).Rate_Type!FieldValTrim,<>,"R")
+		F.Intrinsic.Control.AndIf(V.DataTable.dtImport(V.Local.iCnt).Rate_Type!FieldValTrim,<>,"O")
+		F.Intrinsic.Control.AndIf(V.DataTable.dtImport(V.Local.iCnt).Rate_Type!FieldValTrim,<>,"2")
+			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+			F.Intrinsic.String.Build("Rate_Type: {0} is invalid on line: {1}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).Rate_Type!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+		F.Intrinsic.Control.Else
+			V.Local.sRateType.Set(V.DataTable.dtImport(V.Local.iCnt).Rate_Type!FieldValTrim)
+		F.Intrinsic.Control.EndIf
+		
+		'Good Pieces
+		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).Good_Pieces!FieldValTrim,=,"NULL","OR",V.DataTable.dtImport(V.Local.iCnt).Good_Pieces!FieldValTrim,=,"")
+			F.Data.DataTable.SetValue("dtImport",V.Local.iCnt,"Good_Pieces",0.00)
+		F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.CallSub(ValidateQty,"sQty",V.DataTable.dtImport(V.Local.iCnt).Good_Pieces!FieldVal)
+		F.Intrinsic.Control.If(V.Args.bValid)
+			V.Local.sGoodPieces.Set(V.DataTable.dtImport(V.Local.iCnt).Good_Pieces!FieldVal)
+			F.Intrinsic.String.Format(V.Local.sGoodPieces,"0.0000",V.Local.sGoodPieces)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+			F.Intrinsic.String.Build("Good_Pieces is invalid on line: {0}. Process terminated.",V.Local.iExcelLine.String,V.Local.sMessage)
+			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+		F.Intrinsic.Control.EndIf
+		
+		'Bad Pieces
+		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).Bad_Pieces!FieldValTrim,=,"NULL","OR",V.DataTable.dtImport(V.Local.iCnt).Bad_Pieces!FieldValTrim,=,"")
+			F.Data.DataTable.SetValue("dtImport",V.Local.iCnt,"Bad_Pieces",0.00)
+		F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.CallSub(ValidateQty,"sQty",V.DataTable.dtImport(V.Local.iCnt).Bad_Pieces!FieldVal)
+		F.Intrinsic.Control.If(V.Args.bValid)
+			V.Local.sScrapPieces.Set(V.DataTable.dtImport(V.Local.iCnt).Bad_Pieces!FieldVal)
+			F.Intrinsic.String.Format(V.Local.sScrapPieces,"0.0000",V.Local.sScrapPieces)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+			F.Intrinsic.String.Build("Bad_Pieces is invalid on line: {0}. Process terminated.",V.Local.iExcelLine.String,V.Local.sMessage)
+			F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+		F.Intrinsic.Control.EndIf
+		
+		'Scrap Code
+		V.Local.sScrapCode.Set("")
+		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).Scrap_Code!FieldValTrim,=,"NULL")
+			F.Data.DataTable.SetValue("dtImport",V.Local.iCnt,"Scrap_Code","")
+		F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.If(V.DataTable.dtImport(V.Local.iCnt).Scrap_Code!FieldValTrim,<>,"")
+			F.Intrinsic.Control.CallSub(ValidateScrapCode,"sScrapCode",V.DataTable.dtImport(V.Local.iCnt).Scrap_Code!FieldValTrim)
+			F.Intrinsic.Control.If(V.Args.bValid)
+				V.Local.sScrapCode.Set(V.DataTable.dtImport(V.Local.iCnt).Scrap_Code!FieldValTrim)
+			F.Intrinsic.Control.Else
+				F.Intrinsic.Math.Add(V.Local.iCnt,2,V.Local.iExcelLine)
+				F.Intrinsic.String.Build("Scrap Code: {0} is invalid on line: {1}. Process terminated.",V.DataTable.dtImport(V.Local.iCnt).Scrap_Code!FieldValTrim,V.Local.iExcelLine.String,V.Local.sMessage)
+				F.Intrinsic.Control.CallSub(Unload,"sMessage",V.Local.sMessage)
+			F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.Else
+			V.Local.sScrapCode.Set("")
+		F.Intrinsic.Control.EndIf
+		
+		'Create Tab delimited file for upload                                                                                                   0              1                2                3              4             5           6            7                    8                9                     10                 11                12                13                 14                   15               16                 17                                              
+		F.Intrinsic.String.Build("{17}{1}{0}{2}{0}{3}{0}{4}{0}{5}{0}{6}{0}{7}{0}{8}{0}{9}{0}{10}{0}{11}{0}{12}{0}{13}{0}{14}{0}{15}{16}",V.Ambient.Tab,V.Local.sDateSeq,V.Local.sEmployee,V.Local.sJob,V.Local.sSuffix,V.Local.sSeq,V.Local.sWC,V.Local.sHrsWorked,V.Local.sFlagClsd,V.Local.sFlagIndirect,V.Local.sStartTime,V.Local.sEndTime,V.Local.sRateType,V.Local.sGoodPieces,V.Local.sScrapPieces,V.Local.sScrapCode,V.Ambient.NewLine,V.Local.sString,V.Local.sString)
+
+	F.Intrinsic.Control.Next(v.Local.iCnt)
+	
+	F.Intrinsic.String.Build("Step 1: Processing Record {0} of {1}. Completed.",V.Screen.frmFileSelection!pbProcess.Value,V.DataTable.dtImport.RowCount,V.Local.sProcessMsg)
+	Gui.frmFileSelection.lblProcess.Caption(V.Local.sProcessMsg)
+		
+	'Set Progress Bar Upload to Visible
+	Gui.frmFileSelection.pbProcess.Scrolling(True)
+	Gui.frmFileSelection.lblUpload.Visible(True)
+	
+	'Save Tab Delimited File and Upload records from tab delimited file into JOBS_IN_PROCESS - Online Update must be running in order for these records to get posted to JOB_DETAIL
+	F.Intrinsic.String.Build("{0}\{1}{2}MOPEN.txt",V.Caller.FilesDir,V.Caller.CompanyCode,V.Caller.Terminal,V.Local.sFile)
+	F.Intrinsic.File.String2File(V.Local.sFile,V.Local.sString)
+	F.Intrinsic.Task.LaunchGSSSync("JB0455","-C",V.Local.sFile)
+	
+	'Set Progress Bar Upload to Invisible
+	Gui.frmFileSelection.pbProcess.Scrolling(False)
+	F.Intrinsic.String.Build("Step 2: Uploading {0} Recods. Completed.",V.DataTable.dtImport.RowCount,V.Local.sProcessMsg)
+	Gui.frmFileSelection.lblUpload.Caption(V.Local.sProcessMsg)
+	
+'	F.Intrinsic.File.DeleteFile(V.Local.sFile)
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+Program.Sub.CreateUploadFile.End
+
+Program.Sub.ValidateDate.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+	
+	V.Local.sError.Declare
+	V.Local.bValidDate.Declare
+	V.Local.sDateCC.Declare
+	V.Local.sDateYY.Declare
+	V.Local.sDateMM.Declare
+	V.Local.sDateDD.Declare
+	V.Local.sDate.Declare
+	
+	F.Intrinsic.Control.SelectCase(V.Args.sDateInputFormat)
+		F.Intrinsic.Control.Case("YYYYMMDD")
+			F.Intrinsic.String.Left(V.Args.sDateInput,2,V.Local.sDateCC)
+			F.Intrinsic.String.Mid(V.Args.sDateInput,3,2,V.Local.sDateYY)
+			F.Intrinsic.String.Mid(V.Args.sDateInput,5,2,V.Local.sDateMM)
+			F.Intrinsic.String.Right(V.Args.sDateInput,2,V.Local.sDateDD)			
+	F.Intrinsic.Control.EndSelect
+	
+	V.Local.bValidDate.Set(False)
+	
+	'Validate whether it is a valid date
+	'Set the format of the date to MM/DD/YYYY
+	F.Intrinsic.String.Concat(V.Local.sDateMM,"/",V.Local.sDateDD,"/",V.Local.sDateCC,V.Local.sDateYY,V.Local.sDate)
+	F.Intrinsic.Date.IsDate(V.Local.sDate,V.Local.bValidDate)
+	F.Intrinsic.Control.If(V.Local.bValidDate.Not)
+		F.Intrinsic.String.Concat(V.Local.sDateDD,"/",V.Local.sDateMM,"/",V.Local.sDateCC,V.Local.sDateYY,V.Local.sDate)
+		F.Intrinsic.Date.IsDate(V.Local.sDate,V.Local.bValidDate)
+		F.Intrinsic.Control.If(V.Local.bValidDate.Not)
+			'Invalid Date
+			F.Intrinsic.Variable.AddRV("bValidDate",V.Local.bValidDate,"sRetDate","")
+			F.Intrinsic.Control.ExitSub
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.If(V.Local.bValidDate)
+		F.Intrinsic.Control.SelectCase(V.Args.sDateOutputFormat)
+			F.Intrinsic.Control.Case("MMDDYY")
+				F.Intrinsic.String.Concat(V.Local.sDateMM,V.Local.sDateDD,V.Local.sDateYY,V.Local.sDate)
+			F.Intrinsic.Control.Case("YYMMDD")
+				F.Intrinsic.String.Concat(V.Local.sDateYY,V.Local.sDateMM,V.Local.sDateDD,V.Local.sDate)
+			F.Intrinsic.Control.Case("YYYYMMDD")
+				F.Intrinsic.String.Concat(V.Local.sDateCC,V.Local.sDateYY,V.Local.sDateMM,V.Local.sDateDD,V.Local.sDate)
+			F.Intrinsic.Control.Case("CCYYMMDD")
+				F.Intrinsic.String.Concat(V.Local.sDateCC,V.Local.sDateYY,V.Local.sDateMM,V.Local.sDateDD,V.Local.sDate)
+		F.Intrinsic.Control.EndSelect
+		F.Intrinsic.Variable.AddRV("bValidDate",V.Local.bValidDate,"sRetDate",V.Local.sDate)
+	F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+Program.Sub.ValidateDate.End
+
+Program.Sub.ValidateWorkcenter.Start
+F.Intrinsic.Control.SetErrorHandler("ValidateWorkcenter_Err")
+F.Intrinsic.Control.ClearErrors
+	
+	V.Local.sError.Declare
+	V.Local.bValidWorkCenter.Declare
+	V.Local.bValidWorkGroup.Declare
+	V.Local.sSQL.Declare
+	V.Local.sRet.Declare
+	
+	'Validate that the Workcenter
+	F.Intrinsic.String.Build("SELECT MACHINE FROM WORKCENTERS WHERE MACHINE = '{0}';",V.Args.sWorkcenter,V.Local.sSQL)
+	F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL,V.Local.sRet)
+	F.Intrinsic.Control.If(V.Local.sRet,=,"")
+		V.Local.bValidWorkCenter.Set(False)
+	F.Intrinsic.Control.Else
+		V.Local.bValidWorkCenter.Set(True)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.String.Build("SELECT WORK_GROUP FROM WORKGROUP_HEAD WHERE WORK_GROUP = '{0}';",V.Args.sWorkcenter,V.Local.sSQL)
+	F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL,V.Local.sRet)
+	F.Intrinsic.Control.If(V.Local.sRet,=,"")
+		V.Local.bValidWorkGroup.Set(False)
+	F.Intrinsic.Control.Else
+		V.Local.bValidWorkGroup.Set(True)
+	F.Intrinsic.Control.EndIf
+	
+'	F.Intrinsic.Variable.AddRV("bValid",V.Local.bValid)
+	F.Intrinsic.Variable.AddRV("bValidWorkCenter",V.Local.bValidWorkCenter,"bValidWorkGroup",V.Local.bValidWorkGroup)
+
+F.Intrinsic.Control.Label("ValidateWorkcenter_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+Program.Sub.ValidateWorkcenter.End
+
+Program.Sub.ValidateEmployee.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+	
+	V.Local.sError.Declare
+	V.Local.bValid.Declare
+	V.Local.sSQL.Declare
+	V.Local.sRet.Declare
+	
+	'Validate the employee and that the employee has a rate
+	F.Intrinsic.String.Build("SELECT EMPLOYEE FROM EMPLOYEE_MSTR WHERE EMPLOYEE = '{0}';",V.Args.sEmployee,V.Local.sSQL)
+	F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL,V.Local.sRet)
+	F.Intrinsic.Control.If(V.Local.sRet,=,"")
+		V.Local.bValid.Set(False)
+	F.Intrinsic.Control.Else
+		V.Local.bValid.Set(True)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Variable.AddRV("bValid",V.Local.bValid)
+	
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+Program.Sub.ValidateEmployee.End
+
+Program.Sub.ValidateTime.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+	
+	V.Local.sError.Declare
+	V.Local.bValid.Declare
+	V.Local.sSQL.Declare
+	V.Local.sRet.Declare
+	V.Local.sTimeHH.Declare
+	V.Local.sTimeMM.Declare
+	V.Local.sTime.Declare
+	
+	'Make the time to be 4 char long (Left Pad with ZERO)
+	F.Intrinsic.String.LPad(V.Args.sTime,"0",4,V.Local.sTime)
+	
+	'Validate the Time
+	F.Intrinsic.String.Left(V.Local.sTime,2,V.Local.sTimeHH)
+	F.Intrinsic.String.Mid(V.Local.sTime,3,2,V.Local.sTimeMM)
+	
+	'Check whether the Time is numeric
+	F.Intrinsic.Math.IsNumeric(V.Local.sTimeHH,V.Local.bValid)
+	F.Intrinsic.Control.If(V.Local.bValid.Not)
+		'Invalid Time
+		F.Intrinsic.Variable.AddRV("bValid",V.Local.bValid)
+		F.Intrinsic.Control.ExitSub
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.If(V.Local.sTimeHH.Long,<,0,"OR",V.Local.sTimeHH,>,23)
+			'Invalid Time
+			F.Intrinsic.Variable.AddRV("bValid",False)
+			F.Intrinsic.Control.ExitSub
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Math.IsNumeric(V.Local.sTimeMM,V.Local.bValid)
+	F.Intrinsic.Control.If(V.Local.bValid.Not)
+		'Invalid Time
+		F.Intrinsic.Variable.AddRV("bValid",V.Local.bValid)
+		F.Intrinsic.Control.ExitSub
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.If(V.Local.sTimeMM.Long,<,0,"OR",V.Local.sTimeMM,>,59)
+			'Invalid Time
+			F.Intrinsic.Variable.AddRV("bValid",False)
+			F.Intrinsic.Control.ExitSub
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.EndIf
+	
+	'If it reaches here then it is a valid Time
+	F.Intrinsic.Variable.AddRV("bValid",True)
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+Program.Sub.ValidateTime.End
+
+Program.Sub.ValidateScrapCode.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+	
+	V.Local.sError.Declare
+	V.Local.bValid.Declare
+	V.Local.sSQL.Declare
+	V.Local.sRet.Declare
+	
+	'Validate the Scrap Code
+	F.Intrinsic.String.Build("SELECT CODE FROM REJECTED_CODE WHERE CODE = '{0}';",V.Args.sScrapCode,V.Local.sSQL)
+	F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL,V.Local.sRet)
+	F.Intrinsic.Control.If(V.Local.sRet,=,"")
+		V.Local.bValid.Set(False)
+	F.Intrinsic.Control.Else
+		V.Local.bValid.Set(True)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Variable.AddRV("bValid",V.Local.bValid)
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+Program.Sub.ValidateScrapCode.End
+
+Program.Sub.Unload.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+	V.Local.sError.Declare
+	V.Local.sSQL.Declare
+	V.Local.bExists.Declare
+	
+	F.Intrinsic.Control.If(V.ODBC.con.State,=,1)
+		F.ODBC.Connection!con.close
+	F.Intrinsic.Control.Endif
+	
+	F.Intrinsic.UI.CloseWaitDialog
+	
+	F.Intrinsic.UI.Msgbox(V.Args.sMessage,"GAB_6214_LABOR_CHARGE_FROM_EXCEL")
+	
+	F.Intrinsic.Control.End 
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndIf
+Program.Sub.Unload.End
+
+Program.Sub.ValidateJob.Start
+F.Intrinsic.Control.SetErrorHandler("ValidateJob_Err")
+F.Intrinsic.Control.ClearErrors
+	
+	V.Local.sError.Declare
+	V.Local.bValidJob.Declare
+	V.Local.bJobClosed.Declare
+	V.Local.bJobSeqClosed.Declare
+	V.Local.bLaborSeq.Declare
+	V.Local.bFlagSetup.Declare
+	V.Local.sSQL.Declare
+	V.Local.sRet.Declare
+	
+	'Validate the Job
+'	F.Intrinsic.String.Build("select JOB, SUFFIX, SEQ, LMO, FLAG_CLOSED from JOB_OPERATIONS where JOB = '{0}' AND SUFFIX = '{1}' AND SEQ = '{2}';",V.Args.sJob,V.Args.sSuffix,V.Args.sSeq,V.Local.sSQL)
+	F.Intrinsic.String.Build("select B.JOB, B.SUFFIX, B.SEQ, B.LMO, B.FLAG_CLOSED, B.FLAG_SET_UP, A.DATE_CLOSED from JOB_HEADER A INNER JOIN JOB_OPERATIONS B ON A.JOB = B.JOB AND A.SUFFIX = B.SUFFIX where B.JOB = '{0}' AND B.SUFFIX = '{1}' AND B.SEQ = '{2}';",V.Args.sJob,V.Args.sSuffix,V.Args.sSeq,V.Local.sSQL)
+	F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL,V.Local.sRet)
+	F.Intrinsic.String.Split(V.Local.sRet,"*!*",V.Local.sRet)
+	F.Intrinsic.Control.If(V.Local.sRet(0).Trim,=,"")
+		V.Local.bValidJob.Set(False)
+	F.Intrinsic.Control.Else
+		V.Local.bValidJob.Set(True)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.If(V.Local.sRet(3).Trim,=,"L")
+		V.Local.bLaborSeq.Set(True)
+	F.Intrinsic.Control.Else
+		V.Local.bLaborSeq.Set(False)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.If(V.Local.sRet(4).Trim,=,"Y")
+		V.Local.bJobSeqClosed.Set(True)
+	F.Intrinsic.Control.Else
+		V.Local.bJobSeqClosed.Set(False)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.If(V.Local.sRet(5).Trim,=,"Y")
+		V.Local.bFlagSetup.Set(True)
+	F.Intrinsic.Control.Else
+		V.Local.bFlagSetup.Set(False)
+	F.Intrinsic.Control.EndIf
+
+	F.Intrinsic.Control.If(V.Local.sRet(6).Trim,=,"000000")
+		V.Local.bJobClosed.Set(False)
+	F.Intrinsic.Control.Else
+		V.Local.bJobClosed.Set(True)
+	F.Intrinsic.Control.EndIf
+	
+'	F.Intrinsic.Variable.AddRV("bValidJob",V.Local.bValidJob,"bLaborSeq",V.Local.bLaborSeq,"bJobClosed",V.Local.bJobClosed)
+	F.Intrinsic.Variable.AddRV("bValidJob",V.Local.bValidJob,"bLaborSeq",V.Local.bLaborSeq,"bJobSeqClosed",V.Local.bJobSeqClosed,"bFlagsetup",V.Local.bFlagSetup,"bJobClosed",V.Local.bJobClosed)
+
+
+F.Intrinsic.Control.Label("ValidateJob_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+Program.Sub.ValidateJob.End
+
+Program.Sub.CalcHoursWorked.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+	
+	V.Local.sError.Declare
+	V.Local.iStartTimeHH.Declare
+	V.Local.iStartTimeMM.Declare
+	V.Local.iEndTimeHH.Declare
+	V.Local.iEndTimeMM.Declare
+	V.Local.sStartTime.Declare
+	V.Local.sEndTime.Declare
+	V.Local.sTemp.Declare
+	V.Local.iTempValue.Declare
+	V.Local.fTempValue.Declare
+	V.Local.iStartTimeInMinutes.Declare
+	V.Local.iEndTimeInMinutes.Declare
+	
+	'Make the time to be 4 char long (Left Pad with ZERO)
+	F.Intrinsic.String.LPad(V.Args.sStartTime,"0",4,V.Local.sStartTime)
+	F.Intrinsic.String.LPad(V.Args.sEndTime,"0",4,V.Local.sEndTime)
+	
+	'StartTime
+	F.Intrinsic.String.Left(V.Local.sStartTime,2,V.Local.sTemp)
+	V.Local.iStartTimeHH.Set(V.Local.sTemp.Long)
+	F.Intrinsic.String.Mid(V.Local.sStartTime,3,2,V.Local.sTemp)
+	V.Local.iStartTimeMM.Set(V.Local.sTemp.Long)
+	
+	'EndTime
+	F.Intrinsic.String.Left(V.Local.sEndTime,2,V.Local.sTemp)
+	V.Local.iEndTimeHH.Set(V.Local.sTemp.Long)
+	F.Intrinsic.String.Mid(V.Local.sEndTime,3,2,V.Local.sTemp)
+	V.Local.iEndTimeMM.Set(V.Local.sTemp.Long)
+
+	'Convert StartTime Hours to Minutes
+	F.Intrinsic.Math.Mult(V.Local.iStartTimeHH,60,V.Local.iStartTimeInMinutes)
+	F.Intrinsic.Math.Add(V.Local.iStartTimeInMinutes,V.Local.iStartTimeMM,V.Local.iStartTimeInMinutes)
+	
+	'Convert EndTime Hours to Minutes
+	F.Intrinsic.Math.Mult(V.Local.iEndTimeHH,60,V.Local.iEndTimeInMinutes)
+	F.Intrinsic.Math.Add(V.Local.iEndTimeInMinutes,V.Local.iEndTimeMM,V.Local.iEndTimeInMinutes)
+	
+	'Calculate Time Duration
+	F.Intrinsic.Math.Sub(V.Local.iEndTimeInMinutes,V.Local.iStartTimeInMinutes,V.Local.iTempValue)
+	'Convert to hours
+	F.Intrinsic.Math.Div(V.Local.iTempValue,60,V.Local.fTempValue)
+	F.Intrinsic.Math.Round(V.Local.fTempValue,2,V.Local.fTempValue)
+	
+	F.Intrinsic.Control.If(V.Local.fTempValue,<,0)
+		F.Intrinsic.Math.Add(24,V.Local.fTempValue,V.Local.fTempValue)
+	F.Intrinsic.Control.EndIf
+	F.Intrinsic.Variable.AddRV("fHoursWorked",V.Local.fTempValue)
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+Program.Sub.CalcHoursWorked.End
+
+Program.Sub.cmdSelectFile_Click.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+	
+	V.Local.sError.Declare
+	V.Local.sFile.Declare
+	V.Local.sDir.Declare
+	
+	F.Intrinsic.String.Build("{0}\Select File",V.Caller.FilesDir,V.Local.sDir)
+	F.Intrinsic.UI.ShowOpenFileDialog("","Supported Files|*.xls;*.xlsx;*.csv","",V.Local.sFile)
+	F.Intrinsic.Control.If(V.Local.sFile,<>,"***CANCEL***")
+		Gui.frmFileSelection.txtFilename.Text(V.Local.sFile)
+	F.Intrinsic.Control.Else
+		Gui.frmFileSelection.txtFilename.Text("")
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+Program.Sub.cmdSelectFile_Click.End
+
+Program.Sub.cmdOK_Click.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+	
+	V.Local.sError.Declare
+	V.Local.sFileExt.Declare
+	V.Local.bExcelExists.Declare
+'	V.Local.bOpenOfficeExists.Declare
+	
+	F.Intrinsic.Control.If(V.Screen.frmFileSelection!txtFilename.Text,=,"")
+		F.Intrinsic.UI.Msgbox("Please select a file")
+		F.Intrinsic.Control.ExitSub
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.BlockEvents
+	
+	Gui.frmFileSelection.lblProcess.Visible(True)
+	Gui.frmFileSelection.lblProcess.Caption("Reading Excel files. Please wait.")
+	
+	F.Intrinsic.File.GetExtensionComponent(V.Screen.frmFileSelection!txtFilename.Text,V.Local.sFileExt)
+	F.Intrinsic.Control.If(V.Local.sFileExt.UCase,=,"XLS","or",V.Local.sFileExt.UCase,=,"XLSX")
+		F.Automation.MSExcel.CheckPresence(V.Local.bExcelExists)
+		F.Intrinsic.Control.If(V.Local.bExcelExists)
+			F.Intrinsic.Control.CallSub(LoadExcelFiles)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.UI.Msgbox("You need MS Excel in order to use this program.","GAB_6214_LABOR_CHARGE_FROM_EXCEL")
+		F.Intrinsic.Control.EndIf
+'	F.Intrinsic.Control.ElseIf(V.Local.sFileExt.UCase,=,"ODS")
+'		F.Automation.OOGeneral.CheckPresence(V.Local.bOpenOfficeExists)
+'		F.Intrinsic.Control.If(V.Local.bOpenOfficeExists)
+'			F.Intrinsic.Control.CallSub(LoadOpenOfficeFiles)
+'		F.Intrinsic.Control.Else
+'			F.Intrinsic.UI.Msgbox("You need LibreOffice or OpenOffice in order to use this program.","GAB_6214_LABOR_CHARGE_FROM_EXCEL")
+'		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.ElseIf(V.Local.sFileExt.UCase,=,"CSV")
+		F.Intrinsic.Control.CallSub(LoadTextFiles)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.UnBlockEvents
+	
+'	F.Intrinsic.Control.End
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+Program.Sub.cmdOK_Click.End
+
+Program.Sub.frmFileSelection_UnLoad.Start
+	F.Intrinsic.Control.End
+Program.Sub.frmFileSelection_UnLoad.End
+
+Program.Sub.ValidateQty.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+	
+	V.Local.sError.Declare
+	V.Local.bValid.Declare
+	
+	'Check whether the Qty is numeric
+	F.Intrinsic.Math.IsNumeric(V.Args.sQty,V.Local.bValid)
+	F.Intrinsic.Control.If(V.Local.bValid.Not)
+		'Invalid Qty
+		F.Intrinsic.Variable.AddRV("bValid",V.Local.bValid)
+		F.Intrinsic.Control.ExitSub
+	F.Intrinsic.Control.EndIf
+	
+	'If it reaches here then it is a valid Time
+	F.Intrinsic.Variable.AddRV("bValid",True)
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Concat("Project: GAB_6214_LABOR_CHARGE_FROM_EXCEL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+Program.Sub.ValidateQty.End
+
+Program.Sub.Comments.Start
+${$5$}$2.0.0.0$}$2
+${$6$}$tdjohan$}$20221209171428775$}$8rAQhOSvlohpQhMDm1j544LwmwXnRbkhmUpRcZXyBr1k/2jIj+GMzktrPSzrYVvxK3PM3yQJqUY=
+Program.Sub.Comments.End
